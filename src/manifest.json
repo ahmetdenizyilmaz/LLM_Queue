@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "LLM Queue",
-  "version": "1.0.0",
-  "description": "Queue and auto-send follow-up prompts on ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, and other AI chats.",
+  "version": "1.0.1",
+  "description": "Queue and auto-send follow-up prompts sequentially in web-based AI chat interfaces.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

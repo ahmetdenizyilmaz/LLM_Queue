@@ -1,8 +1,19 @@
-# LLM Queue
+<p align="center">
+  <img src="assets/icons/icon-128.png" alt="LLM Queue icon" width="84" />
+</p>
 
-**Queue and auto-send follow-up prompts effortlessly across ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, and 7+ other AI chat websites.**
+<h1 align="center">LLM Queue</h1>
+
+<p align="center">
+  <strong>Queue and auto-send follow-up prompts effortlessly across ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, and 7+ other AI chat websites.</strong>
+</p>
 
 Stop babysitting long AI responses just to paste your next prompt. Write your full chain of follow-up questions ahead of time, hit `Enter` while the AI is still streaming, or paste multi-step workflows separated by `---` — **LLM Queue** watches the page and dispatches each prompt automatically as soon as the previous response completes.
+
+<p align="center">
+  <img src="assets/store/screenshot-1-drawer.png" alt="LLM Queue expanded drawer" width="48%" />
+  <img src="assets/store/screenshot-2-pill.png" alt="LLM Queue floating pill" width="48%" />
+</p>
 
 ---
 

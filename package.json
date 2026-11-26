@@ -1,7 +1,7 @@
 {
   "name": "llm-queue",
-  "version": "1.0.0",
-  "description": "Queue and auto-send follow-up prompts across ChatGPT, Claude, Gemini, and other LLM chat websites.",
+  "version": "1.0.1",
+  "description": "Queue and auto-send follow-up prompts sequentially in web-based AI chat interfaces.",
   "type": "module",
   "license": "MIT",
   "author": "Ahmet Deniz Yilmaz",

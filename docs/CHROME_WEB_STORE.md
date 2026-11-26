@@ -6,7 +6,7 @@ npm run typecheck
 npm test
 npm run package
 ```
-Upload `release/llm-queue-v1.0.0.zip` in the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+Upload `release/llm-queue-v1.0.1.zip` in the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
 
 ---
 
@@ -15,21 +15,21 @@ Upload `release/llm-queue-v1.0.0.zip` in the [Chrome Web Store Developer Dashboa
 - **Name:** LLM Queue
 - **Category:** Productivity
 - **Short Description (<= 132 chars):**
-  Queue and auto-send follow-up prompts across ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, and more AI chats.
+  Queue and auto-send follow-up prompts sequentially in web-based AI chat interfaces.
 
 - **Detailed Description:**
-  Stop waiting around for long AI responses just to send your next follow-up prompt.
+  Stop waiting around for long AI responses just to paste your next follow-up prompt.
 
-  LLM Queue adds a clean, unobtrusive prompt queue right inside ChatGPT, Claude, Google Gemini, Perplexity, DeepSeek, Grok, Mistral Le Chat, Poe, Qwen, Kimi, HuggingChat, Microsoft Copilot, OpenRouter, and custom self-hosted AI web apps.
+  LLM Queue adds a clean, unobtrusive prompt queue right inside popular web-based AI chat assistants and self-hosted chat interfaces. Write your full sequence of follow-up questions ahead of time, press Enter while the assistant is still streaming, or paste a multi-step workflow separated by `---`. LLM Queue watches the page and dispatches each prompt automatically as soon as the previous reply finishes.
 
   KEY FEATURES:
-  • Auto-Queue on Enter: Keep typing while the AI is generating—press Enter to add your next prompt to the queue instead of interrupting or losing momentum.
-  • Smart Cooldown Dispatch: Watches the page for streaming/Stop indicators and waits for a configurable cooldown (default 1.5s) before sending the next prompt.
+  • Auto-Queue on Enter: Keep typing while the assistant is generating—press Enter to add your next prompt to the queue instead of interrupting or losing momentum.
+  • Smart Cooldown Dispatch: Watches the page for active generation indicators and waits through a configurable cooldown (default 1.5s) before sending the next prompt.
   • Batch Paste Splitting: Separate multiple prompts with `---` on its own line to enqueue an entire multi-step workflow in one paste.
   • Full Queue Control: Drag-and-drop reordering, inline editing, Pause/Resume, Step 1 mode, Send Now, and collapsible sent history.
-  • Reusable Prompt Chains: Save and load your favorite multi-step workflows, with JSON export/import.
-  • Custom Site Support: Add CSS selector rules in Settings or click "Enable on this tab" from the toolbar popup for Open WebUI, LibreChat, and other self-hosted interfaces.
-  • 100% Local & Open Source: All data stays locally in your browser. Zero tracking, zero telemetry, zero external servers.
+  • Reusable Prompt Chains: Save and load your favorite multi-step workflows, with JSON export and import.
+  • Custom Site Support: Add CSS selector rules in Settings or click "Enable on this tab" from the toolbar popup for self-hosted and custom web chat interfaces.
+  • 100% Local & Open Source: All data stays locally in your browser. Zero tracking, zero telemetry, and zero external servers.
 
 ---
 
@@ -37,9 +37,9 @@ Upload `release/llm-queue-v1.0.0.zip` in the [Chrome Web Store Developer Dashboa
 
 - **`storage`**: Stores user settings, queued prompts, reusable prompt presets, and custom site CSS selector rules locally via `chrome.storage.local`.
 - **`activeTab`**: Reads the active tab's URL/ID only when the user opens the toolbar popup or triggers an extension keyboard shortcut.
-- **`scripting`**: Injects the content script on demand only when the user explicitly clicks "Enable on this tab" in the popup for a custom/self-hosted AI chat website.
+- **`scripting`**: Injects the content script on demand only when the user explicitly clicks "Enable on this tab" in the popup for a custom or self-hosted AI chat website.
 - **`notifications` (optional)**: Requested at runtime only if the user enables desktop completion alerts in Settings.
-- **Host permissions (`content_scripts.matches`)**: Required to render the queue overlay and interact with the chat composer on supported LLM chat websites.
+- **Host permissions (`content_scripts.matches`)**: Required to render the isolated queue overlay, detect when an AI chat response finishes streaming, and insert or submit the next queued prompt into the chat input on supported AI chat websites.
 
 ---
 
