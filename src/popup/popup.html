@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM Queue</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="popup">
+      <header class="header">
+        <div class="brand">
+          <img src="../icons/icon-32.png" alt="" class="brand-icon" />
+          <div>
+            <h1 class="brand-title">LLM Queue</h1>
+            <p class="brand-sub" id="site-label">Checking active tab…</p>
+          </div>
+        </div>
+        <button id="open-options" class="icon-btn" title="Settings" aria-label="Settings">
+          ⚙
+        </button>
+      </header>
+
+      <main id="active-view" class="content" hidden>
+        <div class="status-card">
+          <div class="status-row">
+            <span class="dot" id="status-dot"></span>
+            <span class="status-text" id="status-text">Ready</span>
+          </div>
+          <span class="count-pill" id="pending-count">0 queued</span>
+        </div>
+
+        <div class="action-grid">
+          <button id="toggle-pause-btn" class="btn btn-primary">Pause</button>
+          <button id="toggle-panel-btn" class="btn">Show Panel</button>
+        </div>
+
+        <form id="quick-add-form" class="quick-form">
+          <textarea
+            id="quick-input"
+            class="textarea"
+            rows="3"
+            placeholder="Quick-queue a prompt (use --- for batch)…"></textarea>
+          <button type="submit" class="btn btn-primary full-width">Add to Queue</button>
+        </form>
+      </main>
+
+      <main id="inactive-view" class="content" hidden>
+        <div class="empty-card">
+          <p class="empty-title">Not active on this page</p>
+          <p class="empty-sub">
+            LLM Queue automatically runs on ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, and 7 more AI sites.
+          </p>
+          <button id="enable-custom-btn" class="btn btn-primary full-width">
+            Enable on this tab
+          </button>
+          <p id="inject-error" class="error-text" hidden></p>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <button id="footer-options" class="link-btn">All Settings &amp; Presets</button>
+        <a id="github-link" href="https://github.com/ahmetdenizyilmaz/LLM_Queue" target="_blank" rel="noreferrer" class="link-btn">
+          GitHub
+        </a>
+      </footer>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

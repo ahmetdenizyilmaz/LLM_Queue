@@ -1,0 +1,28 @@
+{
+  "name": "llm-queue",
+  "version": "1.0.0",
+  "description": "Queue and auto-send follow-up prompts across ChatGPT, Claude, Gemini, and other LLM chat websites.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Ahmet Deniz Yilmaz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ahmetdenizyilmaz/LLM_Queue.git"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "icons": "python scripts/generate-icons.py",
+    "package": "node scripts/build.mjs && node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.30",
+    "@types/node": "^22.15.3",
+    "esbuild": "^0.25.2",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2"
+  }
+}

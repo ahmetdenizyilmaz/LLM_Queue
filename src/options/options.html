@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM Queue Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <img src="../icons/icon-48.png" alt="LLM Queue" class="brand-icon" />
+          <div>
+            <div class="brand-name">LLM Queue</div>
+            <div class="brand-ver" id="version-label">v1.0.0</div>
+          </div>
+        </div>
+
+        <nav class="nav" role="tablist">
+          <button class="nav-btn is-active" data-tab="general">General</button>
+          <button class="nav-btn" data-tab="presets">Prompt Chains</button>
+          <button class="nav-btn" data-tab="sites">Platforms &amp; Custom Sites</button>
+          <button class="nav-btn" data-tab="shortcuts">Shortcuts &amp; Privacy</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <a href="https://github.com/ahmetdenizyilmaz/LLM_Queue" target="_blank" rel="noreferrer">
+            Open Source on GitHub ↗
+          </a>
+        </div>
+      </aside>
+
+      <main class="main">
+        <!-- TAB: GENERAL -->
+        <section id="tab-general" class="tab-panel">
+          <div class="panel-header">
+            <h1>General Behavior</h1>
+            <p>Configure queue timing, interception, and overlay appearance.</p>
+          </div>
+
+          <div class="card">
+            <label class="setting-row">
+              <div>
+                <div class="setting-title">Enable LLM Queue</div>
+                <div class="setting-desc">Master toggle for overlay injection across all AI sites.</div>
+              </div>
+              <input type="checkbox" id="opt-enabled" class="toggle" />
+            </label>
+
+            <label class="setting-row">
+              <div>
+                <div class="setting-title">Auto-queue on Enter while AI is generating</div>
+                <div class="setting-desc">Pressing Enter in the site chat box while streaming queues your prompt instead of failing or interrupting.</div>
+              </div>
+              <input type="checkbox" id="opt-auto-enter" class="toggle" />
+            </label>
+
+            <label class="setting-row">
+              <div>
+                <div class="setting-title">Scope queue per conversation URL</div>
+                <div class="setting-desc">Keep separate queues for each chat thread. Disable to share one queue across the site.</div>
+              </div>
+              <input type="checkbox" id="opt-scope" class="toggle" />
+            </label>
+
+            <div class="setting-row">
+              <div>
+                <div class="setting-title">Cooldown delay after AI finishes</div>
+                <div class="setting-desc">Wait time before auto-sending the next queued prompt (prevents mid-stream false triggers).</div>
+              </div>
+              <div class="range-wrap">
+                <input type="range" id="opt-cooldown" min="0" max="10000" step="250" />
+                <span id="opt-cooldown-val" class="range-val">1.5s</span>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div>
+                <div class="setting-title">Overlay theme</div>
+                <div class="setting-desc">Automatically adapts to the host website or forces dark/light.</div>
+              </div>
+              <select id="opt-theme" class="select">
+                <option value="auto">Auto (match website)</option>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div>
+                <div class="setting-title">Default dock corner</div>
+                <div class="setting-desc">Starting screen corner before dragging the floating pill.</div>
+              </div>
+              <select id="opt-dock" class="select">
+                <option value="bottom-right">Bottom Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="top-right">Top Right</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div>
+                <div class="setting-title">Batch split delimiter</div>
+                <div class="setting-desc">Line separator used to split multi-prompt pastes into separate queue items.</div>
+              </div>
+              <input type="text" id="opt-delimiter" class="input small" maxlength="12" />
+            </div>
+
+            <label class="setting-row">
+              <div>
+                <div class="setting-title">Play chime when queue finishes</div>
+                <div class="setting-desc">Plays a subtle synthesized two-note tone when the last prompt is sent.</div>
+              </div>
+              <input type="checkbox" id="opt-sound" class="toggle" />
+            </label>
+
+            <label class="setting-row">
+              <div>
+                <div class="setting-title">Desktop notification when queue finishes</div>
+                <div class="setting-desc">Requests optional notification permission to alert you when switching tabs.</div>
+              </div>
+              <input type="checkbox" id="opt-notify" class="toggle" />
+            </label>
+          </div>
+        </section>
+
+        <!-- TAB: PRESETS -->
+        <section id="tab-presets" class="tab-panel" hidden>
+          <div class="panel-header">
+            <h1>Prompt Chains &amp; Backup</h1>
+            <p>Reusable multi-step prompt templates and JSON export/import.</p>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Create New Prompt Chain</h2>
+            <form id="preset-form" class="stack">
+              <input id="preset-name" class="input" type="text" placeholder="Preset name (e.g. Deep Code Audit)" required />
+              <textarea
+                id="preset-prompts"
+                class="input textarea"
+                rows="4"
+                placeholder="Enter prompts separated by --- on a new line"
+                required></textarea>
+              <div>
+                <button type="submit" class="btn btn-primary">Add Preset</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="presets-list" class="stack"></div>
+
+          <div class="card">
+            <h2 class="card-title">Export / Import Settings &amp; Presets</h2>
+            <div class="row-actions">
+              <button id="export-btn" class="btn">Export JSON Backup</button>
+              <label class="btn file-btn">
+                Import JSON Backup
+                <input id="import-input" type="file" accept="application/json" hidden />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB: SITES -->
+        <section id="tab-sites" class="tab-panel" hidden>
+          <div class="panel-header">
+            <h1>Supported Platforms &amp; Custom Sites</h1>
+            <p>Enable or disable built-in platforms, or add custom CSS selectors for self-hosted LLM UIs (Open WebUI, LibreChat, etc.).</p>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Built-in Platforms</h2>
+            <div id="builtin-sites-list" class="sites-grid"></div>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Add Custom Site Rule</h2>
+            <form id="custom-rule-form" class="stack">
+              <div class="grid-2">
+                <input id="rule-name" class="input" type="text" placeholder="Display Name (e.g. Open WebUI)" required />
+                <input id="rule-host" class="input" type="text" placeholder="Host pattern (e.g. chat.myserver.com or *.local)" required />
+              </div>
+              <input id="rule-input" class="input" type="text" placeholder="Input CSS selector (e.g. #chat-textarea, div[contenteditable='true'])" required />
+              <div class="grid-2">
+                <input id="rule-send" class="input" type="text" placeholder="Send button selector (e.g. button[type='submit'])" required />
+                <input id="rule-stop" class="input" type="text" placeholder="Stop button selector (e.g. button[aria-label*='Stop'])" />
+              </div>
+              <div>
+                <button type="submit" class="btn btn-primary">Save Custom Rule</button>
+              </div>
+            </form>
+          </div>
+
+          <div id="custom-rules-list" class="stack"></div>
+        </section>
+
+        <!-- TAB: SHORTCUTS & PRIVACY -->
+        <section id="tab-shortcuts" class="tab-panel" hidden>
+          <div class="panel-header">
+            <h1>Keyboard Shortcuts &amp; Privacy</h1>
+            <p>Fast controls and transparent local-only storage guarantees.</p>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">Shortcuts</h2>
+            <div class="shortcut-list">
+              <div class="shortcut-item">
+                <span>Toggle LLM Queue panel</span>
+                <kbd>Alt + Q</kbd>
+              </div>
+              <div class="shortcut-item">
+                <span>Pause or resume queue</span>
+                <kbd>Alt + Shift + P</kbd>
+              </div>
+              <div class="shortcut-item">
+                <span>Queue text directly from chat input</span>
+                <kbd>Ctrl / Cmd + Shift + Enter</kbd>
+              </div>
+              <div class="shortcut-item">
+                <span>Queue automatically while AI is busy</span>
+                <kbd>Enter</kbd>
+              </div>
+            </div>
+            <p class="setting-desc" style="margin-top: 12px;">
+              You can customize global extension shortcuts anytime at <code>chrome://extensions/shortcuts</code>.
+            </p>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">100% Local &amp; Private</h2>
+            <p class="setting-desc">
+              LLM Queue runs completely inside your browser. Your prompts, queues, presets, and settings are stored exclusively in local browser storage (<code>chrome.storage.local</code>). No data is ever transmitted to external servers, analytics, or telemetry endpoints.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="options.js"></script>
+  </body>
+</html>
