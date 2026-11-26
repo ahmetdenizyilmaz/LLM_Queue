@@ -1,7 +1,6 @@
 import type { CustomSiteRule } from '../shared/types';
 import {
   clearComposerText,
-  isButtonEnabled,
   queryFirstVisible,
   readComposerText,
   setComposerText,
@@ -125,12 +124,14 @@ export function createAdapterFromConfig(config: SiteConfig): SiteAdapter {
       if (!input) {
         return {
           ok: false,
+          retryable: true,
           error: `Could not find ${config.name} chat input box.`,
         };
       }
       if (isBusy()) {
         return {
           ok: false,
+          retryable: true,
           error: `${config.name} is still generating a response.`,
         };
       }
@@ -139,22 +140,30 @@ export function createAdapterFromConfig(config: SiteConfig): SiteAdapter {
       if (!wrote) {
         return {
           ok: false,
+          retryable: true,
           error: `Unable to insert prompt into ${config.name} composer.`,
         };
       }
 
-      const submitted = await triggerSubmit(input, () => {
-        const btn = getSendButton();
-        if (btn && isButtonEnabled(btn)) {
-          return btn;
-        }
-        return btn;
+      const submitted = await triggerSubmit(input, getSendButton, {
+        verifySubmitted: () =>
+          !input.isConnected ||
+          isBusy() ||
+          readComposerText(input).trim().length === 0,
       });
 
       if (!submitted) {
+        if (
+          input.isConnected &&
+          !isBusy() &&
+          readComposerText(input).trim() === text.trim()
+        ) {
+          clearComposerText(input);
+        }
         return {
           ok: false,
-          error: `Failed to trigger send on ${config.name}.`,
+          retryable: true,
+          error: `${config.name} did not accept the prompt yet.`,
         };
       }
       return { ok: true };

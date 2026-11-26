@@ -1,3 +1,4 @@
+import { isButtonEnabled, isProgrammaticSubmitActive } from '../adapters/dom-utils';
 import type { SiteAdapter } from '../adapters/types';
 import type { QueueEngine } from '../engine/queue-engine';
 import type { ExtensionSettings } from '../shared/types';
@@ -50,7 +51,7 @@ export class ComposerInterceptor {
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
-    if (event.isComposing || event.key !== 'Enter') {
+    if (event.isComposing || event.key !== 'Enter' || isProgrammaticSubmitActive()) {
       return;
     }
 
@@ -72,8 +73,9 @@ export class ComposerInterceptor {
       event.stopPropagation();
       event.stopImmediatePropagation();
 
-      this.adapter.clearInput();
       const created = this.engine.enqueueBatch(text);
+      if (created.length === 0) return;
+      this.adapter.clearInput();
       const snapshot = this.engine.getSnapshot();
       this.callbacks.onQueued(
         text,
@@ -83,11 +85,14 @@ export class ComposerInterceptor {
       return;
     }
 
-    if (
+    const shouldAutoQueue =
       isPlainEnter &&
       this.settings.autoQueueOnEnterWhileBusy &&
-      this.adapter.isBusy()
-    ) {
+      (this.adapter.isBusy() ||
+        (this.engine.wasRecentlyBusy(600) &&
+          !isButtonEnabled(this.adapter.getSendButton())));
+
+    if (shouldAutoQueue) {
       const text = this.adapter.readInputText().trim();
       if (!text) return;
 
@@ -95,8 +100,9 @@ export class ComposerInterceptor {
       event.stopPropagation();
       event.stopImmediatePropagation();
 
+      const item = this.engine.enqueue(text);
+      if (!item) return;
       this.adapter.clearInput();
-      this.engine.enqueue(text);
       const snapshot = this.engine.getSnapshot();
       this.callbacks.onQueued(text, 'busy', snapshot.pendingCount);
     }

@@ -15,6 +15,13 @@ interface StoredQueueRecord {
 type QueueMap = Record<string, StoredQueueRecord>;
 
 const memoryStore = new Map<string, unknown>();
+let queueWriteChain: Promise<unknown> = Promise.resolve();
+
+function serializeQueueWrite<T>(task: () => Promise<T>): Promise<T> {
+  const next = queueWriteChain.then(task, task);
+  queueWriteChain = next.catch(() => undefined);
+  return next;
+}
 
 function hasChromeStorage(): boolean {
   return typeof chrome !== 'undefined' && Boolean(chrome.storage?.local);
@@ -71,35 +78,45 @@ export async function getQueue(conversationKey: string): Promise<QueueItem[]> {
   );
 }
 
-export async function saveQueue(conversationKey: string, items: QueueItem[]): Promise<void> {
-  const map = await readStorage<QueueMap>(STORAGE_KEYS.QUEUES, {});
-  if (items.length === 0) {
-    delete map[conversationKey];
-  } else {
-    map[conversationKey] = {
-      items,
-      updatedAt: Date.now(),
-    };
-  }
-  await writeStorage(STORAGE_KEYS.QUEUES, pruneQueueMap(map, 40));
+export function saveQueue(conversationKey: string, items: QueueItem[]): Promise<void> {
+  return serializeQueueWrite(async () => {
+    const map = await readStorage<QueueMap>(STORAGE_KEYS.QUEUES, {});
+    if (items.length === 0) {
+      delete map[conversationKey];
+    } else {
+      map[conversationKey] = {
+        items,
+        updatedAt: Date.now(),
+      };
+    }
+    await writeStorage(STORAGE_KEYS.QUEUES, pruneQueueMap(map, 40));
+  });
 }
 
-export async function migrateQueue(oldKey: string, newKey: string): Promise<QueueItem[]> {
-  if (oldKey === newKey) {
-    return getQueue(newKey);
-  }
-  const map = await readStorage<QueueMap>(STORAGE_KEYS.QUEUES, {});
-  const oldItems = map[oldKey]?.items ?? [];
-  const existingNew = map[newKey]?.items ?? [];
-  const merged = existingNew.length > 0 ? existingNew : oldItems;
-  if (oldKey in map) {
-    delete map[oldKey];
-  }
-  if (merged.length > 0) {
-    map[newKey] = { items: merged, updatedAt: Date.now() };
-  }
-  await writeStorage(STORAGE_KEYS.QUEUES, pruneQueueMap(map, 40));
-  return merged;
+export function migrateQueue(
+  oldKey: string,
+  newKey: string,
+  inMemoryItems?: QueueItem[],
+): Promise<QueueItem[]> {
+  return serializeQueueWrite(async () => {
+    if (oldKey === newKey) {
+      return getQueue(newKey);
+    }
+    const map = await readStorage<QueueMap>(STORAGE_KEYS.QUEUES, {});
+    const oldItems = map[oldKey]?.items ?? [];
+    const existingNew = map[newKey]?.items ?? [];
+    const liveItems =
+      inMemoryItems && inMemoryItems.length > 0 ? inMemoryItems : oldItems;
+    const merged = existingNew.length > 0 ? existingNew : liveItems;
+    if (oldKey in map) {
+      delete map[oldKey];
+    }
+    if (merged.length > 0) {
+      map[newKey] = { items: merged, updatedAt: Date.now() };
+    }
+    await writeStorage(STORAGE_KEYS.QUEUES, pruneQueueMap(map, 40));
+    return merged;
+  });
 }
 
 function pruneQueueMap(map: QueueMap, maxKeys: number): QueueMap {
@@ -111,9 +128,11 @@ function pruneQueueMap(map: QueueMap, maxKeys: number): QueueMap {
   return Object.fromEntries(entries.slice(0, maxKeys));
 }
 
-export async function pruneOldQueues(maxKeys = 40): Promise<void> {
-  const map = await readStorage<QueueMap>(STORAGE_KEYS.QUEUES, {});
-  await writeStorage(STORAGE_KEYS.QUEUES, pruneQueueMap(map, maxKeys));
+export function pruneOldQueues(maxKeys = 40): Promise<void> {
+  return serializeQueueWrite(async () => {
+    const map = await readStorage<QueueMap>(STORAGE_KEYS.QUEUES, {});
+    await writeStorage(STORAGE_KEYS.QUEUES, pruneQueueMap(map, maxKeys));
+  });
 }
 
 export async function getPresets(): Promise<PromptPreset[]> {

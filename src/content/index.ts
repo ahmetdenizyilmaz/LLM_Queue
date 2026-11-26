@@ -1,5 +1,6 @@
 import { resolveAdapter } from '../adapters/registry';
 import { QueueEngine } from '../engine/queue-engine';
+import { STORAGE_KEYS } from '../shared/constants';
 import { sendToBackground } from '../shared/messaging';
 import { getConversationKey, isNewChatPath } from '../shared/parser';
 import {
@@ -128,16 +129,19 @@ async function bootstrap(): Promise<void> {
       return;
     }
 
+    const liveSnapshot = engine.getSnapshot();
     const dispatchedRecently = Date.now() - engine.getLastDispatchedAt() < 15000;
     const shouldCarryQueue =
-      lastWasNewChat && !isNewChatPath(nextHref) && (dispatchedRecently || engine.getSnapshot().pendingCount > 0);
+      lastWasNewChat &&
+      !isNewChatPath(nextHref) &&
+      (dispatchedRecently || liveSnapshot.pendingCount > 0);
 
     const oldKey = conversationKey;
     conversationKey = nextKey;
     lastWasNewChat = isNewChatPath(nextHref);
 
     if (shouldCarryQueue && prevHref !== nextHref) {
-      const migrated = await migrateQueue(oldKey, nextKey);
+      const migrated = await migrateQueue(oldKey, nextKey, liveSnapshot.items);
       engine.setConversation(nextKey, migrated);
     } else {
       const nextItems = await getQueue(nextKey);
@@ -156,6 +160,9 @@ async function bootstrap(): Promise<void> {
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'local') return;
+      if (!(STORAGE_KEYS.SETTINGS in changes) && !(STORAGE_KEYS.PRESETS in changes)) {
+        return;
+      }
       void (async () => {
         const [nextSettings, nextPresets] = await Promise.all([
           getSettings(),
@@ -170,7 +177,7 @@ async function bootstrap(): Promise<void> {
           engine.destroy();
           overlay?.destroy();
           window.__LLM_QUEUE_INITIALIZED__ = false;
-        } else if (changes) {
+        } else {
           const nextKey = getConversationKey(
             window.location.href,
             nextSettings.scopePerConversation,

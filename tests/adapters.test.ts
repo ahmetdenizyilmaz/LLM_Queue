@@ -49,8 +49,11 @@ describe('site adapters & registry', () => {
         <button data-testid="send-button" type="button">Send</button>
       </form>
     `;
+    const inputEl = document.querySelector('#prompt-textarea') as HTMLElement;
     const sendBtn = document.querySelector('[data-testid="send-button"]') as HTMLButtonElement;
-    const onSend = vi.fn();
+    const onSend = vi.fn(() => {
+      inputEl.textContent = '';
+    });
     sendBtn.addEventListener('click', onSend);
 
     const adapter = resolveAdapter(new URL('https://chatgpt.com/'))!;
@@ -65,6 +68,7 @@ describe('site adapters & registry', () => {
 
     const blockedResult = await adapter.submitPrompt('Should fail while busy');
     expect(blockedResult.ok).toBe(false);
+    expect(blockedResult.retryable).toBe(true);
 
     // Remove stop button -> ready to send
     stopBtn.remove();
@@ -73,6 +77,42 @@ describe('site adapters & registry', () => {
     const okResult = await adapter.submitPrompt('Explain quantum tunneling simply.');
     expect(okResult.ok).toBe(true);
     expect(onSend).toHaveBeenCalledTimes(1);
-    expect(adapter.readInputText()).toContain('Explain quantum tunneling simply.');
+  });
+
+  it('returns retryable failure if host composer ignores submission', async () => {
+    vi.useFakeTimers();
+    try {
+      document.body.innerHTML = `
+        <form>
+          <div id="prompt-textarea" contenteditable="true"></div>
+          <button data-testid="send-button" type="button" disabled>Send</button>
+        </form>
+      `;
+
+      const adapter = resolveAdapter(new URL('https://chatgpt.com/'))!;
+      const pending = adapter.submitPrompt('Unaccepted prompt');
+      await vi.advanceTimersByTimeAsync(2500);
+      const res = await pending;
+
+      expect(res.ok).toBe(false);
+      expect(res.retryable).toBe(true);
+      expect(adapter.readInputText().trim()).toBe('');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('treats Gemini .send-button.stop as busy and does not click it as Send', () => {
+    document.body.innerHTML = `
+      <rich-textarea>
+        <div class="ql-editor" contenteditable="true"></div>
+      </rich-textarea>
+      <button class="send-button stop" aria-label="Stop response" type="button">Stop</button>
+    `;
+
+    const adapter = resolveAdapter(new URL('https://gemini.google.com/app'))!;
+    expect(adapter.isBusy()).toBe(true);
+    expect(adapter.getStopButton()).not.toBeNull();
+    expect(adapter.getSendButton()).toBeNull();
   });
 });

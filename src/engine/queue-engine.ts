@@ -39,11 +39,13 @@ export class QueueEngine {
   private stepMode = false;
   private lastError: string | null = null;
   private aiBusy = false;
+  private lastBusyAt = 0;
   private cooldownStartedAt: number | null = null;
   private cooldownRemainingMs = 0;
   private lastDispatchedAt = 0;
   private isDispatching = false;
   private destroyed = false;
+  private retryCounts = new Map<string, number>();
 
   private observer: MutationObserver | null = null;
   private tickTimer: ReturnType<typeof setInterval> | null = null;
@@ -106,6 +108,11 @@ export class QueueEngine {
     return this.lastDispatchedAt;
   }
 
+  public wasRecentlyBusy(windowMs = 600): boolean {
+    if (this.aiBusy) return true;
+    return this.lastBusyAt > 0 && Date.now() - this.lastBusyAt <= windowMs;
+  }
+
   public getSnapshot(): EngineSnapshot {
     const pendingCount = this.items.filter(
       (i) => i.status === 'pending' || i.status === 'sending',
@@ -151,6 +158,9 @@ export class QueueEngine {
 
     const busy = this.adapter.isBusy();
     this.aiBusy = busy;
+    if (busy) {
+      this.lastBusyAt = Date.now();
+    }
 
     if (this.isDispatching) {
       this.status = 'dispatching';
@@ -238,7 +248,7 @@ export class QueueEngine {
     this.status = 'dispatching';
     this.emit();
 
-    let result: { ok: boolean; error?: string };
+    let result: { ok: boolean; error?: string; retryable?: boolean };
     try {
       result = await this.adapter.submitPrompt(target.text);
     } catch (err) {
@@ -252,6 +262,7 @@ export class QueueEngine {
     if (this.destroyed) return false;
 
     if (result.ok) {
+      this.retryCounts.delete(target.id);
       target.status = 'sent';
       target.sentAt = Date.now();
       delete target.error;
@@ -271,6 +282,16 @@ export class QueueEngine {
       this.saveAndEmit();
       return true;
     } else {
+      const retries = this.retryCounts.get(target.id) ?? 0;
+      if (result.retryable && retries < 2) {
+        this.retryCounts.set(target.id, retries + 1);
+        target.status = 'pending';
+        delete target.error;
+        this.lastDispatchedAt = Date.now();
+        this.saveAndEmit();
+        return false;
+      }
+
       target.status = 'failed';
       target.error = result.error ?? 'Failed to submit prompt.';
       this.lastError = target.error;
@@ -330,6 +351,7 @@ export class QueueEngine {
     const index = this.items.findIndex((i) => i.id === id);
     if (index === -1) return false;
     this.items.splice(index, 1);
+    this.retryCounts.delete(id);
     if (!this.items.some((i) => i.status === 'failed')) {
       this.lastError = null;
     }
@@ -464,6 +486,7 @@ export class QueueEngine {
       if (item.status === 'failed') {
         item.status = 'pending';
         delete item.error;
+        this.retryCounts.delete(item.id);
         changed = true;
       }
     }
@@ -478,6 +501,7 @@ export class QueueEngine {
 
   public clearPending(): void {
     this.items = this.items.filter((i) => i.status === 'sent');
+    this.retryCounts.clear();
     this.lastError = null;
     this.stepMode = false;
     this.saveAndEmit();

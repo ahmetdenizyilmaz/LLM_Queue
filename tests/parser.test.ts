@@ -54,6 +54,8 @@ describe('getConversationKey & isNewChatPath', () => {
     expect(isNewChatPath('https://chatgpt.com/')).toBe(true);
     expect(isNewChatPath('https://claude.ai/new')).toBe(true);
     expect(isNewChatPath('https://gemini.google.com/app')).toBe(true);
+    expect(isNewChatPath('https://gemini.google.com/u/0/app')).toBe(true);
+    expect(isNewChatPath('https://gemini.google.com/u/1/app/abc123')).toBe(false);
     expect(isNewChatPath('https://chatgpt.com/c/12345')).toBe(false);
     expect(isNewChatPath('https://claude.ai/chat/999')).toBe(false);
   });

@@ -115,6 +115,24 @@ function setContentEditableText(el: HTMLElement, text: string): void {
   }
 
   if (!insertedViaCommand || readComposerText(el).trim() !== text.trim()) {
+    try {
+      if (typeof ClipboardEvent === 'function' && typeof DataTransfer === 'function') {
+        const dt = new DataTransfer();
+        dt.setData('text/plain', text);
+        el.dispatchEvent(
+          new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: dt,
+          }),
+        );
+      }
+    } catch {
+      // ClipboardEvent / DataTransfer may be unavailable in headless environments
+    }
+  }
+
+  if (readComposerText(el).trim() !== text.trim()) {
     const lines = text.split('\n');
     el.replaceChildren();
     for (const line of lines) {
@@ -199,33 +217,20 @@ export function clearComposerText(el: HTMLElement): void {
   }
 }
 
+let programmaticSubmitActive = false;
+
+/**
+ * Whether triggerSubmit is currently dispatching a synthetic Enter key event.
+ */
+export function isProgrammaticSubmitActive(): boolean {
+  return programmaticSubmitActive;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Trigger submission by waiting briefly for framework state flush, clicking an
- * enabled Send button, or falling back to an Enter keyboard event.
- */
-export async function triggerSubmit(
-  input: HTMLElement,
-  findSendButton: () => HTMLElement | null,
-  waitMs = 90,
-): Promise<boolean> {
-  if (waitMs > 0) {
-    await sleep(waitMs);
-  }
-
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const btn = findSendButton();
-    if (isButtonEnabled(btn)) {
-      btn!.click();
-      return true;
-    }
-    await sleep(60);
-  }
-
-  // Fallback: dispatch Enter on the composer itself
+function dispatchSyntheticEnter(input: HTMLElement): void {
   input.focus();
   const enterInit: KeyboardEventInit = {
     key: 'Enter',
@@ -235,8 +240,99 @@ export async function triggerSubmit(
     bubbles: true,
     cancelable: true,
   };
-  input.dispatchEvent(new KeyboardEvent('keydown', enterInit));
-  input.dispatchEvent(new KeyboardEvent('keypress', enterInit));
-  input.dispatchEvent(new KeyboardEvent('keyup', enterInit));
-  return true;
+  programmaticSubmitActive = true;
+  try {
+    input.dispatchEvent(new KeyboardEvent('keydown', enterInit));
+    input.dispatchEvent(new KeyboardEvent('keypress', enterInit));
+    input.dispatchEvent(new KeyboardEvent('keyup', enterInit));
+  } finally {
+    programmaticSubmitActive = false;
+  }
+}
+
+export interface TriggerSubmitOptions {
+  waitMs?: number;
+  maxButtonAttempts?: number;
+  buttonPollMs?: number;
+  verifySubmitted?: () => boolean;
+  verifyTimeoutMs?: number;
+}
+
+async function waitForVerification(
+  verifySubmitted: () => boolean,
+  timeoutMs: number,
+  pollMs = 80,
+): Promise<boolean> {
+  if (verifySubmitted()) return true;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await sleep(pollMs);
+    if (verifySubmitted()) {
+      return true;
+    }
+  }
+  return verifySubmitted();
+}
+
+/**
+ * Trigger submission by waiting briefly for framework state flush, clicking an
+ * enabled Send button, or falling back to an Enter keyboard event.
+ * When `verifySubmitted` is supplied, confirms the host accepted the submission.
+ */
+export async function triggerSubmit(
+  input: HTMLElement,
+  findSendButton: () => HTMLElement | null,
+  optionsOrWaitMs: number | TriggerSubmitOptions = 100,
+): Promise<boolean> {
+  const opts: TriggerSubmitOptions =
+    typeof optionsOrWaitMs === 'number'
+      ? { waitMs: optionsOrWaitMs }
+      : optionsOrWaitMs;
+
+  const waitMs = opts.waitMs ?? 100;
+  const maxButtonAttempts = opts.maxButtonAttempts ?? 8;
+  const buttonPollMs = opts.buttonPollMs ?? 100;
+  const verifyTimeoutMs = opts.verifyTimeoutMs ?? 600;
+
+  if (waitMs > 0) {
+    await sleep(waitMs);
+  }
+
+  const attemptTrigger = async (): Promise<void> => {
+    for (let attempt = 0; attempt < maxButtonAttempts; attempt++) {
+      const btn = findSendButton();
+      if (isButtonEnabled(btn)) {
+        btn!.click();
+        return;
+      }
+      if (attempt < maxButtonAttempts - 1) {
+        await sleep(buttonPollMs);
+      }
+    }
+    dispatchSyntheticEnter(input);
+  };
+
+  await attemptTrigger();
+
+  if (!opts.verifySubmitted) {
+    return true;
+  }
+
+  if (await waitForVerification(opts.verifySubmitted, verifyTimeoutMs)) {
+    return true;
+  }
+
+  // Recovery attempt: nudge host editor reactivity and try one more submit
+  input.focus();
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await sleep(60);
+
+  const retryBtn = findSendButton();
+  if (isButtonEnabled(retryBtn)) {
+    retryBtn!.click();
+  } else {
+    dispatchSyntheticEnter(input);
+  }
+
+  return waitForVerification(opts.verifySubmitted, 400);
 }

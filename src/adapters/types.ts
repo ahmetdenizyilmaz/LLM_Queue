@@ -14,6 +14,7 @@ export interface SiteConfig {
 export interface SubmitResult {
   ok: boolean;
   error?: string;
+  retryable?: boolean;
 }
 
 export interface SiteAdapter {

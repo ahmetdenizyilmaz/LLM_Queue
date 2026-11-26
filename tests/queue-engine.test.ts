@@ -172,4 +172,72 @@ describe('QueueEngine', () => {
 
     engine.destroy();
   });
+
+  it('automatically retries retryable submit failures without dropping or pausing', async () => {
+    let attempts = 0;
+    const mock = createMockAdapter({
+      async submitPrompt(text: string) {
+        attempts++;
+        if (attempts === 1) {
+          return { ok: false, retryable: true, error: 'Host composer not ready yet' };
+        }
+        mock.submitted.push(text);
+        return { ok: true };
+      },
+    });
+
+    const engine = new QueueEngine({
+      adapter: mock.adapter,
+      settings: { ...DEFAULT_SETTINGS, cooldownMs: 100 },
+      conversationKey: 'test',
+      onChange: () => {},
+      persistItems: () => {},
+      tickIntervalMs: 50,
+      postDispatchGraceMs: 100,
+    });
+
+    engine.enqueue('Retryable prompt');
+    await vi.advanceTimersByTimeAsync(150);
+
+    // First attempt failed retryably: stays pending and unpaused
+    const midSnap = engine.getSnapshot();
+    expect(midSnap.paused).toBe(false);
+    expect(midSnap.pendingCount).toBe(1);
+    expect(attempts).toBe(1);
+
+    // After grace + cooldown, second attempt succeeds
+    await vi.advanceTimersByTimeAsync(300);
+    expect(attempts).toBe(2);
+    expect(mock.submitted).toEqual(['Retryable prompt']);
+    expect(engine.getSnapshot().sentCount).toBe(1);
+    expect(engine.getSnapshot().pendingCount).toBe(0);
+
+    engine.destroy();
+  });
+
+  it('tracks wasRecentlyBusy window right after AI finishes generating', async () => {
+    const mock = createMockAdapter();
+    mock.setBusy(true);
+
+    const engine = new QueueEngine({
+      adapter: mock.adapter,
+      settings: { ...DEFAULT_SETTINGS, cooldownMs: 1000 },
+      conversationKey: 'test',
+      onChange: () => {},
+      persistItems: () => {},
+      tickIntervalMs: 50,
+      postDispatchGraceMs: 100,
+    });
+
+    expect(engine.wasRecentlyBusy(600)).toBe(true);
+
+    mock.setBusy(false);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(engine.wasRecentlyBusy(600)).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(engine.wasRecentlyBusy(600)).toBe(false);
+
+    engine.destroy();
+  });
 });

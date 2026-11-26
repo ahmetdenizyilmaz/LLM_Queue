@@ -69,7 +69,7 @@ export function isNewChatPath(urlStr: string): boolean {
   try {
     const url = new URL(urlStr);
     const cleanPath = url.pathname.replace(/\/+$/, '') || '/';
-    return NEW_CHAT_PATHS.has(cleanPath);
+    return NEW_CHAT_PATHS.has(cleanPath) || /^\/u\/\d+\/app$/.test(cleanPath);
   } catch {
     return false;
   }
